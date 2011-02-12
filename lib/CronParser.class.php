@@ -3,170 +3,247 @@
 /**
  * Cron schedule parser.
  *
- * @see http://stackoverflow.com/questions/321494/calculate-when-a-cron-job-will-be-executed-then-next-time/3453872#3453872
- * @see http://pastebin.com/S55pWzwt
+ * This CronParser is based on the work of "Michael" mentioned below.
+ *
+ * @link http://stackoverflow.com/questions/321494/calculate-when-a-cron-job-will-be-executed-then-next-time/3453872#3453872
+ * @link http://en.wikipedia.org/wiki/Cron
  */
 class CronParser
 {
-    /**
-     * @var array Cron parts
-     */
-    private $_cronParts;
+  /**
+   * @var array Cron parts
+   */
+  protected $cronParts;
 
-    /**
-     * Constructor
-     *
-     * @param string $schedule Cron schedule string (e.g. '8 * * * *').  The
-     *      schedule can handle ranges (10-12) and intervals
-     *      (*\/10 [remove the backslash]).  Schedule parts should map to
-     *      minute [0-59], hour [0-23], day of month, month [1-12], day of week [1-7]
-     *
-     * @throws InvalidArgumentException if $schedule is not a valid cron schedule
-     */
-    public function __construct($schedule)
+  /**
+   * Constructor.
+   *
+   * @uses CronParser::setSchedule()
+   */
+  public function __construct($schedule)
+  {
+    $this->setSchedule($schedule);
+  }
+
+  /**
+   * Set the schedule of the cron to parse.
+   *
+   * @throws InvalidArgumentException If the given $schedule is not a valid cron schedule.
+   *
+   * @param string $schedule A valid crontab entry.
+   *
+   * @return CronParser $this
+   */
+  public function setSchedule($schedule)
+  {
+    $this->cronParts = explode(' ', $schedule);
+
+    if (count($this->cronParts) != 5)
     {
-        $this->_cronParts = explode(' ', $schedule);
-        if (count($this->_cronParts) != 5) {
-            throw new InvalidArgumentException($schedule . ' is not a valid cron schedule string');
-        }
+      throw new InvalidArgumentException(sprintf('The given schedule "%s" is invalid.', $schedule));
     }
 
-    /**
-     * Check if a date/time unit value satisfies a crontab unit
-     *
-     * @param DateTime $nextRun Current next run date
-     * @param string $unit Date/time unit type (e.g. Y, m, d, H, i)
-     * @param string $schedule Cron schedule variable
-     *
-     * @return bool Returns TRUE if the unit satisfies the constraint
-     */
-    public function unitSatisfiesCron(DateTime $nextRun, $unit, $schedule)
-    {
-        $unitValue = (int)$nextRun->format($unit);
+    return $this;
+  }
 
-        if ($schedule == '*') {
-            return true;
-        } if (strpos($schedule, '-')) {
-            list($first, $last) = explode('-', $schedule);
-            return $unitValue >= $first && $unitValue <= $last;
-        } else if (strpos($schedule, '*/') !== false) {
-            list($delimiter, $interval) = explode('*/', $schedule);
-            return $unitValue % (int)$interval == 0;
-        } else {
-            return $unitValue == (int)$schedule;
-        }
+  /**
+   * Check if a date/time unit value satisfies a crontab unit.
+   *
+   * @param DateTime $date The date to check against.
+   * @param string $part The PHP date() part of a date formatted string.
+   *
+   * @return bool
+   */
+  public function unitSatisfiesCron(DateTime $date, $part)
+  {
+    $schedule = $this->getSchedule($part);
+
+    if ($schedule == '*')
+    {
+      return true;
     }
 
-    /**
-     * Get the date in which the cron will run next
-     *
-     * @param string|DateTime (optional) $fromTime Set the relative start time
-     * @param string $currentTime (optional) Optionally set the current date
-     *      time for testing purposes
-     *
-     * @return DateTime
-     */
-    public function getNextRunDate($fromTime = 'now', $currentTime = 'now')
+    $unitValue = (int) $date->format($part);
+
+    if (strpos($schedule, '-'))
     {
-        $nextRun = ($fromTime instanceof DateTime) ? $fromTime : new DateTime($fromTime ?: 'now');
-        $nextRun->setTime($nextRun->format('H'), $nextRun->format('i'), 0);
-        $currentDate = ($currentTime instanceof DateTime) ? $currentTime : new DateTime($currentTime ?: 'now');
-        $i = 0;
+      list($first, $last) = explode('-', $schedule);
 
-        // Set a hard limit to bail on an impossible date
-        while (++$i && $i < 100000) {
+      return (($unitValue >= $first) and ($unitValue <= $last));
+    }
+    else if (strpos($schedule, '*/') !== false)
+    {
+      list($delimiter, $interval) = explode('*/', $schedule);
 
-            // Adjust the month until it matches.  Reset day to 1 and reset time.
-            if (!$this->unitSatisfiesCron($nextRun, 'm', $this->getSchedule('month'))) {
-                $nextRun->add(new DateInterval('P1M'));
-                $nextRun->setDate($nextRun->format('Y'), $nextRun->format('m'), 1);
-                $nextRun->setTime(0, 0, 0);
-                continue;
-            }
+      return ($unitValue % (int) $interval == 0);
+    }
+    else
+    {
+      return ($unitValue == (int) $schedule);
+    }
+  }
 
-            // Adjust the day of the month by incrementing the day until it matches. Reset time.
-            if (!$this->unitSatisfiesCron($nextRun, 'd', $this->getSchedule('day_of_month'))) {
-                $nextRun->add(new DateInterval('P1D'));
-                $nextRun->setTime(0, 0, 0);
-                continue;
-            }
+  /**
+   * Returns the date the cron is scheduled for the next run.
+   *
+   * @param DateTime $date The date since when the next run date shall be calculated.
+   * @param DateTime $currentTime A modified DateTime to refer to as "current" time.
+   *
+   * @return DateTime
+   */
+  public function getNextScheduledDate(DateTime $date, DateTime $currentTime)
+  {
+    while (($date = $this->getNextRunDate($date->add(new DateInterval('PT1M')))) < $currentTime);
 
-            // Adjust the day of week by incrementing the day until it matches.  Resest time.
-            if (!$this->unitSatisfiesCron($nextRun, 'N', $this->getSchedule('day_of_week'))) {
-                $nextRun->add(new DateInterval('P1D'));
-                $nextRun->setTime(0, 0, 0);
-                continue;
-            }
+    return $date;
+  }
 
-            // Adjust the hour until it matches the set hour.  Set seconds and minutes to 0
-            if (!$this->unitSatisfiesCron($nextRun, 'H', $this->getSchedule('hour'))) {
-                $nextRun->add(new DateInterval('PT1H'));
-                $nextRun->setTime($nextRun->format('H'), 0, 0);
-                continue;
-            }
+  /**
+   * Returns first date after the given start date the cron is scheduled.
+   *
+   * @param DateTime $lastRun The date since when the next run date shall be calculated.
+   *
+   * @return DateTime
+   */
+  protected function getNextRunDate(DateTime $lastRun)
+  {
+    $nextRun = clone $lastRun;
+    $nextRun->setTime($nextRun->format('H'), $nextRun->format('i'), 0);
 
-            // Adjust the minutes until it matches a set minute
-            if (!$this->unitSatisfiesCron($nextRun, 'i', $this->getSchedule('minute'))) {
-                $nextRun->add(new DateInterval('PT1M'));
-                continue;
-            }
+    $i = 0;
 
-            // If the suggested next run time is not after the current time, then keep iterating
-            if (is_string($fromTime) && $currentDate >= $nextRun) {
-                $nextRun->add(new DateInterval('PT1M'));
-                continue;
-            }
+    // Set a hard limit to bail on an impossible date
+    while (++$i < 100000)
+    {
+      // Adjust the month until it matches.  Reset day to 1 and reset time.
+      if (!$this->unitSatisfiesCron($nextRun, 'm'))
+      {
+        $nextRun->add(new DateInterval('P1M'));
+        $nextRun->setDate($nextRun->format('Y'), $nextRun->format('m'), 1);
+        $nextRun->setTime(0, 0, 0);
 
-            break;
-        }
+        continue;
+      }
 
-        return $nextRun;
+      // Adjust the day of the month by incrementing the day until it matches. Reset time.
+      if (!$this->unitSatisfiesCron($nextRun, 'd'))
+      {
+        $nextRun->add(new DateInterval('P1D'));
+        $nextRun->setTime(0, 0, 0);
+
+        continue;
+      }
+
+      // Adjust the day of week by incrementing the day until it matches.  Resest time.
+      if (!$this->unitSatisfiesCron($nextRun, 'N'))
+      {
+        $nextRun->add(new DateInterval('P1D'));
+        $nextRun->setTime(0, 0, 0);
+
+        continue;
+      }
+
+      // Adjust the hour until it matches the set hour.  Set seconds and minutes to 0
+      if (!$this->unitSatisfiesCron($nextRun, 'H'))
+      {
+        $nextRun->add(new DateInterval('PT1H'));
+        $nextRun->setTime($nextRun->format('H'), 0, 0);
+
+        continue;
+      }
+
+      // Adjust the minutes until it matches a set minute
+      if (!$this->unitSatisfiesCron($nextRun, 'i'))
+      {
+        $nextRun->add(new DateInterval('PT1M'));
+
+        continue;
+      }
+
+      break;
     }
 
-    /**
-     * Get all or part of the cron schedule string
-     *
-     * @param string $part Specify the part to retrieve or NULL to get the full
-     *      cron schedule string.  $part can be the PHP date() part of a date
-     *      formatted string or one of the following values:
-     *      NULL, 'minute', 'hour', 'month', 'day_of_week', 'day_of_month'
-     *
-     * @return string
-     */
-    public function getSchedule($part = null)
+    return $nextRun;
+  }
+
+  /**
+   * Returns the cron schedule or a specified part of it.
+   *
+   * @link http://docs.php.net/date
+   *
+   * @param string $part The PHP date() part of a date formatted string. If null the complete schedule string will be returned.
+   *
+   * @return string
+   */
+  public function getSchedule($part = null)
+  {
+    switch ($part)
     {
-        switch ($part) {
-            case 'minute': case 'i':
-                return $this->_cronParts[0];
-            case 'hour': case 'H':
-                return $this->_cronParts[1];
-            case 'day_of_month': case 'd':
-                return $this->_cronParts[2];
-            case 'month': case 'm':
-                return $this->_cronParts[3];
-            case 'day_of_week': case 'N':
-                return $this->_cronParts[4];
-            default:
-                return implode(' ', $this->_cronParts);
-        }
+      case 'i':
+        return $this->cronParts[0];
+
+      case 'H':
+        return $this->cronParts[1];
+
+      case 'd':
+        return $this->cronParts[2];
+
+      case 'm':
+        return $this->cronParts[3];
+
+      case 'N':
+        return $this->cronParts[4];
+
+      default:
+        return implode(' ', $this->cronParts);
+    }
+  }
+
+  /**
+   * Deterime if the cron is due to run based on the current time and last run time.
+   *
+   * @param DateTime $lastRun The DateTime the cron was last run. Defaults to current DateTime.
+   * @param DateTime $currentTime The DateTime to use as the current time.
+   *
+   * @return bool
+   */
+  public function isDue(DateTime $lastRun = null, DateTime $currentTime = null)
+  {
+    // At the same time, a cron never runs twice.
+    if ($lastRun === $currentTime)
+    {
+      return false;
     }
 
-    /**
-     * Deterime if the cron is due to run based on the current time, last run
-     * time, and the next run time.
-     *
-     * If the relative next run time based on the last run time is not equal to
-     * the next suggested run time based on the current time, then the cron
-     * needs to run.
-     *
-     * @param string|DateTime $lastRun (optional) Date the cron was last run.
-     * @param string|DateTime $currentTime (optional) Set the current time for testing
-     *
-     * @return bool Returns TRUE if the cron is due to run or FALSE if not
-     */
-    public function isDue($lastRun = 'now', $currentTime = 'now')
+    if (is_null($lastRun))
     {
-        $currentTime = ($currentTime instanceof DateTime) ? $currentTime : new DateTime($currentTime ?: 'now');
-        return ($this->getNextRunDate($lastRun, $currentTime) != $this->getNextRunDate($currentTime, $currentTime));
+      $lastRun = new DateTime();
     }
+
+    if (is_null($currentTime))
+    {
+      $currentTime = new DateTime();
+    }
+
+    $nextRun = $this->getNextRunDate($lastRun);
+    $scheduledRun = $this->getNextScheduledDate($lastRun, $currentTime);
+
+    if ($nextRun < $scheduledRun)
+    {
+      if ($nextRun == $lastRun->setTime($lastRun->format('H'), $lastRun->format('i'), 0))
+      {
+        $checkDate = &$scheduledRun;
+      }
+      else
+      {
+        $checkDate = &$nextRun;
+      }
+    }
+    else
+    {
+      $checkDate = &$scheduledRun;
+    }
+
+    return ($checkDate <= $currentTime);
+  }
 }
