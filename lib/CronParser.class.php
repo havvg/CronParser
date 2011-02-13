@@ -93,6 +93,7 @@ class CronParser
    */
   public function getNextScheduledDate(DateTime $date, DateTime $currentTime)
   {
+    $date = clone $date;
     while (($date = $this->getNextRunDate($date->add(new DateInterval('PT1M')))) < $currentTime);
 
     return $date;
@@ -111,7 +112,6 @@ class CronParser
     $nextRun->setTime($nextRun->format('H'), $nextRun->format('i'), 0);
 
     $i = 0;
-
     // Set a hard limit to bail on an impossible date
     while (++$i < 100000)
     {
@@ -207,14 +207,8 @@ class CronParser
    *
    * @return bool
    */
-  public function isDue(DateTime $lastRun = null, DateTime $currentTime = null)
+  public function isDue(DateTime $lastRun = null, DateTime $currentTime = null, $expected = null)
   {
-    // At the same time, a cron never runs twice.
-    if ($lastRun === $currentTime)
-    {
-      return false;
-    }
-
     if (is_null($lastRun))
     {
       $lastRun = new DateTime();
@@ -225,7 +219,20 @@ class CronParser
       $currentTime = new DateTime();
     }
 
+    // At the same time, a cron never runs twice.
+    if ($lastRun == $currentTime)
+    {
+      return false;
+    }
+
     $nextRun = $this->getNextRunDate($lastRun);
+    $tRun = clone $lastRun;
+    // We did not actually get the next run.
+    if ($nextRun == $tRun->setTime($tRun->format('H'), $tRun->format('i'), 0))
+    {
+      $nextRun = $this->getNextRunDate($tRun->add(new DateInterval('PT1M')));
+    }
+
     $scheduledRun = $this->getNextScheduledDate($lastRun, $currentTime);
 
     if ($nextRun < $scheduledRun)

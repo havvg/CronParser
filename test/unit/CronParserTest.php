@@ -65,9 +65,12 @@ class CronParserTest extends PHPUnit_Framework_TestCase
       array('50 * * * *',        '2010-08-10 20:50:39', '2010-08-10 19:50:23', '2010-08-10 21:50:00', true),
       array('50 * * * *',        '2010-08-10 20:50:56', '2010-08-10 20:50:43', '2010-08-10 21:50:00', false),
 
+      // given by third party to check against
+      array('* * * * *',         '2011-02-12 23:33:47', '2011-02-12 23:34:00', '2011-02-12 23:35:00', false),
+
       // using relative test
-      array('* * * * *', date('Y-m-d H:i:s'), date('Y-m-d H:i:s', strtotime('-10 minutes')), date('Y-m-d H:i:0', strtotime('+1 minute')), true),
-      array('* * * * *', date('Y-m-d H:i:s'), date('Y-m-d H:i:0'), date('Y-m-d H:i:0', strtotime('+1 minute')), false),
+      array('* * * * *', date('Y-m-d H:i:s'), date('Y-m-d H:i:s', strtotime('-10 minutes')), date('Y-m-d H:i:00', strtotime('+1 minute')), true),
+      array('* * * * *', date('Y-m-d H:i:s'), date('Y-m-d H:i:00'), date('Y-m-d H:i:00', strtotime('+1 minute')), false),
     );
   }
 
@@ -84,7 +87,7 @@ class CronParserTest extends PHPUnit_Framework_TestCase
 
     $cron = new CronParser($schedule);
 
+    $this->assertEquals($isDue, $cron->isDue($lastRun, $currentTime, $isDue));
     $this->assertEquals($nextRun, $cron->getNextScheduledDate($lastRun, $currentTime));
-    $this->assertEquals($isDue, $cron->isDue($lastRun, $currentTime));
   }
 }
