@@ -87,7 +87,7 @@ class CronParserTest extends PHPUnit_Framework_TestCase
 
     $cron = new CronParser($schedule);
 
-    $this->assertEquals($isDue, $cron->isDue($lastRun, $currentTime, $isDue));
+    $this->assertEquals($isDue, $cron->isDue($lastRun, $currentTime));
     $this->assertEquals($nextRun, $cron->getNextScheduledDate($lastRun, $currentTime));
   }
 }

@@ -207,7 +207,7 @@ class CronParser
    *
    * @return bool
    */
-  public function isDue(DateTime $lastRun = null, DateTime $currentTime = null, $expected = null)
+  public function isDue(DateTime $lastRun = null, DateTime $currentTime = null)
   {
     if (is_null($lastRun))
     {
