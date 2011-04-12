@@ -59,6 +59,10 @@ class CronParserTest extends PHPUnit_Framework_TestCase
       // 15th minute, of the second hour, every 15 days, in January, Tuesday-Friday
       array('15 2 */15 1 2-5',   '2010-08-10 22:10:19', '2010-08-10 22:09:19', '2013-01-15 02:15:00', false),
 
+      // 9th of month at 2:00am
+      array('0 2 9 * *',         '2011-04-12 15:17:28', '2011-04-12 02:01:04', '2011-05-09 02:00:00', false),
+      array('0 2 9 * *',         '2011-05-09 02:00:00', '2011-04-12 02:01:04', '2011-05-09 02:00:00', true),
+
       // check in the minute of next run
       // The difference: The first one is due, it has to run right now!
       //                 The second one has been processed for the current minute.
