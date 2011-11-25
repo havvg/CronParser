@@ -1,5 +1,7 @@
 h1. CronParser
 
+!https://secure.travis-ci.org/havvg/CronParser.png(Build Status)!
+
 The CronParser is a utility to check crontab entries against DateTime objects.
 
 h2. Tests
