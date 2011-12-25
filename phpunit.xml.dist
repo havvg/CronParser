@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit bootstrap="test/bootstrap/unit.php"
-  colors="false"
-  convertErrorsToExceptions="true"
-  convertNoticesToExceptions="true"
-  convertWarningsToExceptions="true"
-  stopOnFailure="true">
+<phpunit bootstrap="tests/bootstrap.php"
+         colors="false"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         stopOnFailure="true">
 
-  <testsuites>
-    <testsuite name="Unit Tests">
-      <directory>test/unit/</directory>
-    </testsuite>
-  </testsuites>
+    <testsuites>
+        <testsuite name="Unit Tests">
+            <directory>./tests/</directory>
+        </testsuite>
+    </testsuites>
+
+    <filter>
+        <whitelist>
+            <directory>./src/</directory>
+        </whitelist>
+    </filter>
 </phpunit>
