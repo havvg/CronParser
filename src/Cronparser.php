@@ -19,10 +19,14 @@ class Cronparser
      * Constructor.
      *
      * @uses CronParser::setSchedule()
+     *
+     * @param string $schedule An optional schedule to load upon creation.
      */
-    public function __construct($schedule)
+    public function __construct($schedule = null)
     {
-        $this->setSchedule($schedule);
+        if (!is_null($schedule)) {
+            $this->setSchedule($schedule);
+        }
     }
 
     /**
@@ -53,7 +57,7 @@ class Cronparser
      *
      * @return bool
      */
-    public function unitSatisfiesCron(DateTime $date, $part)
+    protected function unitSatisfiesCron(DateTime $date, $part)
     {
         $schedule = $this->getSchedule($part);
 
