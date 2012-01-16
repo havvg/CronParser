@@ -81,6 +81,11 @@ class CronparserTest extends PHPUnit_Framework_TestCase
             // using relative test
             array('* * * * *', date('Y-m-d H:i:s'), date('Y-m-d H:i:s', strtotime('-10 minutes')), date('Y-m-d H:i:00', strtotime('+1 minute')), true),
             array('* * * * *', date('Y-m-d H:i:s'), date('Y-m-d H:i:00'), date('Y-m-d H:i:00', strtotime('+1 minute')), false),
+
+            // Minutes 2,17,32,47 every hour
+            array('2,17,32,47 * * * *', '2010-08-10 22:02:33', '2010-08-10 22:02:01', '2010-08-10 22:17:00', false),
+            // Minutes 17,32 hours 2,14 every day
+            array('17,32 2,14 * * *',   '2010-08-10 22:02:33', '2010-08-10 14:32:00', '2010-08-11 02:17:00', false),
         );
     }
 
