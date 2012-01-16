@@ -42,7 +42,7 @@ class Cronparser
     {
         $this->cronParts = explode(' ', $schedule);
 
-        if (count($this->cronParts) != 5) {
+        if (5 != count($this->cronParts)) {
             throw new InvalidArgumentException(sprintf('The given schedule "%s" is invalid.', $schedule));
         }
 
@@ -71,12 +71,22 @@ class Cronparser
             list($first, $last) = explode('-', $schedule);
 
             return (($unitValue >= $first) and ($unitValue <= $last));
-        } else if (strpos($schedule, '*/') !== false) {
-            list($delimiter, $interval) = explode('*/', $schedule);
+        } elseif (false !== strpos($schedule, '*/')) {
+            list(, $interval) = explode('*/', $schedule);
 
-            return ($unitValue % (int)$interval == 0);
+            return (0 == $unitValue % (int) $interval);
+        } elseif (false !== strpos($schedule, ',')) {
+            $values = explode(',', $schedule);
+
+            foreach ($values as $eachValue) {
+                if ($unitValue == (int) $eachValue) {
+                    return true;
+                }
+            }
+
+            return false;
         } else {
-            return ($unitValue == (int)$schedule);
+            return ($unitValue == (int) $schedule);
         }
     }
 
